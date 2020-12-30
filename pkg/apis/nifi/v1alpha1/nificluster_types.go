@@ -197,6 +197,9 @@ type NodeConfig struct {
 	//RunAsUser define the id of the user to run in the Nifi image
 	// +kubebuilder:validation:Minimum=1
 	RunAsUser *int64 `json:"runAsUser,omitempty"`
+	//FSGroup define the id of the group for each volumes in Nifi image
+	// +kubebuilder:validation:Minimum=1
+	FSGroup *int64 `json:"FSGroup,omitempty"`
 	// Set this to true if the instance is a node in a cluster.
 	// https://nifi.apache.org/docs/nifi-docs/html/administration-guide.html#basic-cluster-setup
 	IsNode *bool `json:"isNode,omitempty"`
@@ -471,6 +474,16 @@ func (nConfig *NodeConfig) GetRunAsUser() *int64 {
 	}
 
 	return func(i int64) *int64 { return &i }(defaultUserID)
+}
+
+//
+func (nConfig *NodeConfig) GetFSGroup() *int64 {
+	var defaultGroupID int64 = 1000
+	if nConfig.FSGroup != nil {
+		return nConfig.FSGroup
+	}
+
+	return func(i int64) *int64 { return &i }(defaultGroupID)
 }
 
 //
