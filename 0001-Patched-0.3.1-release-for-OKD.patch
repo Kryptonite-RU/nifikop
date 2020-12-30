@@ -1,0 +1,138 @@
+diff --git a/config/samples/simplenificluster.yaml b/config/samples/simplenificluster.yaml
+index cddb838..13cbf05 100644
+--- a/config/samples/simplenificluster.yaml
++++ b/config/samples/simplenificluster.yaml
+@@ -1,3 +1,4 @@
++---
+ apiVersion: nifi.orange.com/v1alpha1
+ kind: NifiCluster
+ metadata:
+@@ -5,7 +6,7 @@ metadata:
+ spec:
+   service:
+     headlessEnabled: true
+-  zkAddresse: "zookeepercluster-client.zookeeper:2181"
++  zkAddresse: "zookeeper-client:2181"
+   zkPath: "/simplenifi"
+   clusterImage: "apache/nifi:1.11.3"
+   oneNifiNodePerNode: false
+@@ -18,11 +19,11 @@ spec:
+           pvcSpec:
+             accessModes:
+               - ReadWriteOnce
+-            storageClassName: "standard"
++            storageClassName: "linstor-hdd-repl"
+             resources:
+               requests:
+                 storage: 10Gi
+-      serviceAccountName: "default"
++      serviceAccountName: "nifi"
+       resourcesRequirements:
+         limits:
+           cpu: "2"
+@@ -48,4 +49,47 @@ spec:
+         containerPort: 6007
+       - type: "s2s"
+         name: "s2s"
+-        containerPort: 10000
+\ No newline at end of file
++        containerPort: 10000
++---
++apiVersion: v1
++kind: ServiceAccount
++metadata:
++  name: nifi
++---
++apiVersion: v1
++kind: SecurityContextConstraints
++metadata:
++  labels:
++    name: nifi
++  name: nifi
++allowHostDirVolumePlugin: false
++allowHostIPC: false
++allowHostNetwork: false
++allowHostPID: false
++allowHostPorts: false
++allowPrivilegedContainer: false
++allowedCapabilities: null
++fsGroup:
++  ranges:
++  - max: 1000
++    min: 1000
++  type: MustRunAs
++users:
++- system:serviceaccount:nifikop-test:nifi
++runAsUser:
++  type: MustRunAs
++  uid: 1000
++seLinuxContext:
++  type: RunAsAny
++supplementalGroups:
++  ranges:
++  - max: 1000
++    min: 1000
++  type: MustRunAs
++volumes:
++    - configMap
++    - downwardAPI
++    - emptyDir
++    - persistentVolumeClaim
++    - projected
++    - secret
+\ No newline at end of file
+diff --git a/deploy/crds/v1/nifi.orange.com_nificlusters_crd.yaml b/deploy/crds/v1/nifi.orange.com_nificlusters_crd.yaml
+index 97b4659..6616d80 100644
+--- a/deploy/crds/v1/nifi.orange.com_nificlusters_crd.yaml
++++ b/deploy/crds/v1/nifi.orange.com_nificlusters_crd.yaml
+@@ -593,6 +593,7 @@ spec:
+                             type: string
+                         required:
+                         - containerPort
++                        - protocol
+                         type: object
+                       type: array
+                       x-kubernetes-list-map-keys:
+diff --git a/deploy/crds/v1beta1/nifi.orange.com_nificlusters_crd.yaml b/deploy/crds/v1beta1/nifi.orange.com_nificlusters_crd.yaml
+index 90b8d21..9d876c0 100644
+--- a/deploy/crds/v1beta1/nifi.orange.com_nificlusters_crd.yaml
++++ b/deploy/crds/v1beta1/nifi.orange.com_nificlusters_crd.yaml
+@@ -584,6 +584,7 @@ spec:
+                           type: string
+                       required:
+                       - containerPort
++                      - protocol
+                       type: object
+                     type: array
+                     x-kubernetes-list-map-keys:
+diff --git a/deploy/operator.yaml b/deploy/operator.yaml
+index d57c095..ad8e2ac 100644
+--- a/deploy/operator.yaml
++++ b/deploy/operator.yaml
+@@ -16,7 +16,7 @@ spec:
+       containers:
+         - name: nifikop
+           # Replace this with the built image name
+-          image: orangeopensource/nifikop:0.3.1
++          image: orangeopensource/nifikop:v0.3.1-release
+           command:
+           - nifikop
+           imagePullPolicy: Always
+diff --git a/deploy/role.yaml b/deploy/role.yaml
+index cd302a6..ad6813f 100644
+--- a/deploy/role.yaml
++++ b/deploy/role.yaml
+@@ -78,3 +78,10 @@ rules:
+   - patch
+   - update
+   - watch
++- apiGroups:
++  - cert-manager.io
++  resources:
++  - 'certificates'
++  verbs:
++  - list
++  - watch
+-- 
+2.28.0
+
