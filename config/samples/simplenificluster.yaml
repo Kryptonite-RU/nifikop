@@ -1,3 +1,4 @@
+---
 apiVersion: nifi.orange.com/v1alpha1
 kind: NifiCluster
 metadata:
@@ -5,7 +6,7 @@ metadata:
 spec:
   service:
     headlessEnabled: true
-  zkAddresse: "zookeepercluster-client.zookeeper:2181"
+  zkAddresse: "zookeeper-client:2181"
   zkPath: "/simplenifi"
   clusterImage: "apache/nifi:1.11.3"
   oneNifiNodePerNode: false
@@ -18,11 +19,11 @@ spec:
           pvcSpec:
             accessModes:
               - ReadWriteOnce
-            storageClassName: "standard"
+            storageClassName: "linstor-hdd-repl"
             resources:
               requests:
                 storage: 10Gi
-      serviceAccountName: "default"
+      serviceAccountName: "nifi"
       resourcesRequirements:
         limits:
           cpu: "2"
@@ -49,3 +50,46 @@ spec:
       - type: "s2s"
         name: "s2s"
         containerPort: 10000
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nifi
+---
+apiVersion: v1
+kind: SecurityContextConstraints
+metadata:
+  labels:
+    name: nifi
+  name: nifi
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowedCapabilities: null
+fsGroup:
+  ranges:
+  - max: 1000
+    min: 1000
+  type: MustRunAs
+users:
+- system:serviceaccount:nifikop-test:nifi
+runAsUser:
+  type: MustRunAs
+  uid: 1000
+seLinuxContext:
+  type: RunAsAny
+supplementalGroups:
+  ranges:
+  - max: 1000
+    min: 1000
+  type: MustRunAs
+volumes:
+    - configMap
+    - downwardAPI
+    - emptyDir
+    - persistentVolumeClaim
+    - projected
+    - secret
